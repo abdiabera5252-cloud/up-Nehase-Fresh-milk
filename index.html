@@ -358,6 +358,32 @@
             cursor: pointer;
         }
 
+        /* Copyable Payment Card Styles */
+        .copy-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background 0.2s ease;
+        }
+
+        .copy-card:active {
+            transform: scale(0.98);
+        }
+
+        .copy-btn-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+        }
+
         /* Rating Stars */
         .star-rating {
             display: flex;
@@ -387,9 +413,37 @@
             cursor: pointer;
             margin-top: 10px;
         }
+
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-color);
+            color: #121212;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            animation: fadeInOut 2s ease forwards;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -10px); }
+            15% { opacity: 1; transform: translate(-50%, 0); }
+            85% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -10px); }
+        }
     </style>
 </head>
 <body>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast-notification">Copied to clipboard!</div>
 
 <div class="menu-container">
     <!-- Language Switcher -->
@@ -475,21 +529,31 @@
     </div>
 </div>
 
-<!-- Payment Info Modal -->
+<!-- Payment Info Modal (With Copy Functionality) -->
 <div class="modal-overlay" id="paymentModal">
     <div class="modal-card">
         <button class="modal-close" onclick="togglePaymentModal()">&#10005;</button>
         <h3 style="color: var(--accent-color); margin-bottom: 15px;" id="txt-modal-pay-title">Payment Options (Zelalem Abera Shanika)</h3>
         
         <div style="display:flex; flex-direction:column; gap:12px; font-size:0.85rem;">
-            <div style="background:rgba(0,136,204,0.1); border:1px solid #0088cc; padding:10px; border-radius:10px;">
-                <strong style="color:#0088cc;">Telebirr</strong>
-                <div style="margin-top:4px;"><span id="txt-lbl-phone">Phone Number</span>: <strong>0918338337</strong></div>
+            <!-- Telebirr Copy Card -->
+            <div class="copy-card" style="background:rgba(0,136,204,0.1); border:1px solid #0088cc;" onclick="copyToClipboard('0918338337', 'Telebirr number')">
+                <div>
+                    <strong style="color:#0088cc;">Telebirr</strong>
+                    <div style="margin-top:4px;"><span id="txt-lbl-phone">Phone Number</span>: <strong>0918338337</strong></div>
+                </div>
+                <span class="copy-btn-badge" id="btn-copy-1">Copy</span>
             </div>
-            <div style="background:rgba(123,31,162,0.1); border:1px solid #7b1fa2; padding:10px; border-radius:10px;">
-                <strong style="color:#ba68c8;">CBE Bank</strong>
-                <div style="margin-top:4px;"><span id="txt-lbl-acc">Account Number</span>: <strong>1000377773679</strong></div>
+
+            <!-- CBE Copy Card -->
+            <div class="copy-card" style="background:rgba(123,31,162,0.1); border:1px solid #7b1fa2;" onclick="copyToClipboard('1000377773679', 'CBE Account')">
+                <div>
+                    <strong style="color:#ba68c8;">CBE Bank</strong>
+                    <div style="margin-top:4px;"><span id="txt-lbl-acc">Account Number</span>: <strong>1000377773679</strong></div>
+                </div>
+                <span class="copy-btn-badge" id="btn-copy-2">Copy</span>
             </div>
+
             <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); padding:10px; border-radius:10px;">
                 <strong id="txt-lbl-cash">Cash / Card</strong>
                 <div style="margin-top:4px;" id="txt-lbl-counter">At Counter or Table</div>
@@ -567,7 +631,8 @@
             msgOrderErr: "Fill in table number and ensure your cart has items.",
             msgError: "Failed to process request.",
             msgNetworkErr: "Network error occurred.",
-            loadErr: "Error loading live menu data."
+            loadErr: "Error loading live menu data.",
+            copiedToast: "Copied to clipboard!"
         },
         am: {
             subhead: "ፕሪሚየም ዲጂታል ሜኑ",
@@ -605,7 +670,8 @@
             msgOrderErr: "እባክዎን የጠረጴዛ ቁጥር ያስገቡ እና ዕቃ መምረጥዎን ያረጋግጡ።",
             msgError: "ተግባሩን ማከናወን አልተቻለም።",
             msgNetworkErr: "የኔትወርክ ችግር አጋጥሟል።",
-            loadErr: "የሜኑ መረጃ መጫን አልተቻለም።"
+            loadErr: "የሜኑ መረጃ መጫን አልተቻለም።",
+            copiedToast: "ተቀድቷል!"
         }
     };
 
@@ -647,10 +713,34 @@
         document.getElementById('btn-submit-order').innerText = t.btnPlaceOrder;
     }
 
+    function copyToClipboard(text, label) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`${label} (${text}) ${translations[currentLang].copiedToast}`);
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast(`${label} ${translations[currentLang].copiedToast}`);
+        });
+    }
+
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2000);
+    }
+
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'Carbohydrate', 'protein', 'protein shake', 'calcium', 'Magnisium', 'vitamin'];
+        const keys = ['all', 'breakfast', 'hot_beverages', 'soft_drinks'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
