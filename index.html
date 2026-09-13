@@ -650,7 +650,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'Carbohydrate', 'Protein', 'Protein shake', 'calcium', 'Magnisium', 'vitamin'];
+        const keys = ['all', 'Carbohydrate', 'protein', 'Protein shake', 'calcium', 'Magnisium', 'vitamin'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
