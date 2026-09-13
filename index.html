@@ -615,7 +615,7 @@
             btnSending: "Sending...",
             categories: {
                 all: "All Items",
-                breakfast: "Breakfast",
+                Carbohydrate: "Carbohydrate",
                 hot_beverages: "Hot Beverages",
                 soft_drinks: "Soft Drinks"
             },
@@ -740,7 +740,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'breakfast', 'hot_beverages', 'soft_drinks'];
+        const keys = ['all', 'Carbohydrate', 'hot_beverages', 'soft_drinks'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
