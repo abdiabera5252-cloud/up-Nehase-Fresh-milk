@@ -260,7 +260,7 @@
 
         .item-action-row {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
             margin-top: 10px;
             padding-top: 8px;
@@ -617,7 +617,7 @@
                 all: "All Items",
                 carbohydrate: "Carbohydrate",
                 protein: "Protein",
-                protein_shake: "Protein_shake"
+                protein_shake: "Protein Shake",
                 calcium: "Calcium",
                 vitamin: "Vitamin"
             },
@@ -656,12 +656,11 @@
             btnSending: "እየላከ ነው...",
             categories: {
                 all: "ሁሉም",
-                carbohydrate: "ቁርስ",
-                protein: "ትኩስ መጠጦች",
-                protein_shake: "ለስላሳ መጠጦች",
-                calcium      : "ካልሲየም",
-                vitamin      : "ቫይታሚን"
-                      
+                carbohydrate: "ካርቦሃይድሬት",
+                protein: "ፕሮቲን",
+                protein_shake: "ፕሮቲን ሼክ",
+                calcium: "ካልሲየም",
+                vitamin: "ቫይታሚን"
             },
             viewCart: "ትዕዛዝ ይመልከቱ",
             cartTitle: "የእርስዎ ትዕዛዝ",
@@ -744,7 +743,6 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const categoryKeys = Object.keys(translations[currentLang].categories);
         const keys = ['all', 'carbohydrate', 'protein', 'protein_shake', 'calcium', 'vitamin'];
         
         catContainer.innerHTML = keys.map(key => {
@@ -754,7 +752,13 @@
         }).join('');
     }
 
-    // Helper function to safely parse CSV fields containing quotes or commas
+    function filterMenu(category, element) {
+        currentCategory = category;
+        document.querySelectorAll('.categories .tab').forEach(el => el.classList.remove('active'));
+        if (element) element.classList.add('active');
+        renderMenu();
+    }
+
     function parseCSVLine(line) {
         const result = [];
         let start = 0;
@@ -786,7 +790,6 @@
             if (!response.ok) throw new Error("HTTP error " + response.status);
             const data = await response.text();
             
-            // Clean carriage returns and split into rows
             const rows = data.replace(/\r/g, '').split('\n').filter(r => r.trim() !== '');
             if (rows.length <= 1) return;
 
@@ -833,15 +836,16 @@
             const name = (currentLang === 'am' && item.name_am) ? item.name_am : item.name;
             const desc = (currentLang === 'am' && item.desc_am) ? item.desc_am : item.desc;
             const itemQty = cart[item.name] ? cart[item.name].qty : 0;
+            const escapedName = item.name.replace(/'/g, "\\'");
 
             const actionMarkup = itemQty > 0 ? `
                 <div class="cart-btn-ctrl">
-                    <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', -1)">-</button>
+                    <button class="qty-btn" onclick="updateCartQuantity('${escapedName}', -1)">-</button>
                     <span style="font-weight:600; font-size:0.85rem;">${itemQty}</span>
-                    <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+</button>
+                    <button class="qty-btn" onclick="updateCartQuantity('${escapedName}', 1)">+</button>
                 </div>
             ` : `
-                <button class="add-cart-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+ Add to Order</button>
+                <button class="add-cart-btn" onclick="updateCartQuantity('${escapedName}', 1)">+ Add to Order</button>
             `;
 
             const itemHTML = `
@@ -851,30 +855,32 @@
                     </div>
                     <div class="item-details">
                         <div class="item-header">
-                            <div class="item-title">${name}</div>
-                            <div class="item-price">${item.price}</div>
+                            <span class="item-title">${name}</span>
+                            <span class="item-price">${item.price}</span>
                         </div>
-                        <div class="item-description">${desc}</div>
+                        <p class="item-description">${desc}</p>
                         <div class="item-action-row">
-                            <span style="font-size:0.75rem; color:var(--text-muted);">${item.category.replace('_',' ')}</span>
                             ${actionMarkup}
                         </div>
                     </div>
                 </div>
             `;
-            menuContainer.innerHTML += itemHTML;
+            menuContainer.insertAdjacentHTML('beforeend', itemHTML);
         });
     }
 
-    function updateCartQuantity(itemName, change) {
+    function updateCartQuantity(itemName, delta) {
         const itemObj = globalMenuData.find(i => i.name === itemName);
         if (!itemObj) return;
 
         if (!cart[itemName]) {
-            cart[itemName] = { item: itemObj, qty: 0 };
+            cart[itemName] = {
+                data: itemObj,
+                qty: 0
+            };
         }
 
-        cart[itemName].qty += change;
+        cart[itemName].qty += delta;
 
         if (cart[itemName].qty <= 0) {
             delete cart[itemName];
@@ -895,30 +901,33 @@
         let totalPrice = 0;
         cartItemsList.innerHTML = '';
 
-        Object.values(cart).forEach(({ item, qty }) => {
-            totalQty += qty;
-            const priceVal = parsePrice(item.price);
-            const subtotal = priceVal * qty;
-            totalPrice += subtotal;
+        Object.keys(cart).forEach(name => {
+            const entry = cart[name];
+            const itemPrice = parsePrice(entry.data.price);
+            const lineTotal = itemPrice * entry.qty;
+            
+            totalQty += entry.qty;
+            totalPrice += lineTotal;
 
-            const name = (currentLang === 'am' && item.name_am) ? item.name_am : item.name;
+            const displayName = (currentLang === 'am' && entry.data.name_am) ? entry.data.name_am : entry.data.name;
+            const escapedName = name.replace(/'/g, "\\'");
 
-            cartItemsList.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+            cartItemsList.insertAdjacentHTML('beforeend', `
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem;">
                     <div>
-                        <div style="font-weight:600; font-size:0.9rem;">${name}</div>
-                        <div style="font-size:0.75rem; color:var(--text-muted);">${item.price} x ${qty}</div>
+                        <div style="font-weight:600;">${displayName}</div>
+                        <div style="color:var(--text-muted); font-size:0.75rem;">${entry.qty} x ${entry.data.price}</div>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <div class="cart-btn-ctrl">
-                            <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', -1)">-</button>
-                            <span style="font-size:0.85rem;">${qty}</span>
-                            <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+</button>
+                        <span style="font-weight:700; color:var(--accent-color);">${lineTotal} ETB</span>
+                        <div class="cart-btn-ctrl" style="padding:0px 6px;">
+                            <button class="qty-btn" onclick="updateCartQuantity('${escapedName}', -1)">-</button>
+                            <span style="font-size:0.8rem;">${entry.qty}</span>
+                            <button class="qty-btn" onclick="updateCartQuantity('${escapedName}', 1)">+</button>
                         </div>
-                        <span style="font-weight:600; min-width:60px; text-align:right; font-size:0.9rem;">${subtotal} ETB</span>
                     </div>
                 </div>
-            `;
+            `);
         });
 
         cartCountBadge.innerText = totalQty;
@@ -929,86 +938,13 @@
             cartBar.style.display = 'flex';
         } else {
             cartBar.style.display = 'none';
-            const cartModal = document.getElementById('cartModal');
-            if (cartModal.style.display === 'flex') toggleCartModal();
+            document.getElementById('cartModal').style.display = 'none';
         }
     }
 
     function toggleCartModal() {
         const modal = document.getElementById('cartModal');
         modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
-    }
-
-    async function submitOrder() {
-        const t = translations[currentLang];
-        const table = document.getElementById('orderTable').value.trim();
-        const phone = document.getElementById('orderPhone').value.trim();
-        const paymentMethod = document.getElementById('orderPaymentMethod').value;
-        const submitBtn = document.getElementById('btn-submit-order');
-
-        if (!table || Object.keys(cart).length === 0) {
-            alert(t.msgOrderErr);
-            return;
-        }
-
-        let totalPrice = 0;
-        let itemsSummary = '';
-
-        Object.values(cart).forEach(({ item, qty }) => {
-            const priceVal = parsePrice(item.price);
-            const subtotal = priceVal * qty;
-            totalPrice += subtotal;
-            itemsSummary += `• <b>${item.name}</b> x${qty} - ${subtotal} ETB\n`;
-        });
-
-        let message = `<b>🛒 NEW ORDER - NEHASE 7 FRESH MILK</b>\n\n`;
-        message += `<b>Table/Room:</b> ${table}\n`;
-        if (phone) message += `<b>Customer Phone:</b> ${phone}\n`;
-        message += `<b>Payment Method:</b> ${paymentMethod}\n\n`;
-        message += `<b>Items Ordered:</b>\n${itemsSummary}\n`;
-        message += `<b>TOTAL:</b> ${totalPrice} ETB`;
-
-        submitBtn.innerText = t.btnSending;
-        submitBtn.disabled = true;
-
-        try {
-            const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    chat_id: TELEGRAM_CHAT_ID,
-                    text: message,
-                    parse_mode: "HTML"
-                })
-            });
-
-            const data = await response.json();
-            if (data.ok) {
-                alert(t.msgOrderSuccess);
-                cart = {};
-                updateCartUI();
-                renderMenu();
-                toggleCartModal();
-                document.getElementById('orderTable').value = '';
-                document.getElementById('orderPhone').value = '';
-            } else {
-                alert(t.msgError);
-            }
-        } catch (error) {
-            alert(t.msgNetworkErr);
-        } finally {
-            submitBtn.innerText = t.btnPlaceOrder;
-            submitBtn.disabled = false;
-        }
-    }
-
-    function filterMenu(category, clickedTab) {
-        currentCategory = category;
-        const tabs = document.querySelectorAll('.tab');
-        tabs.forEach(tab => tab.classList.remove('active'));
-        if(clickedTab) clickedTab.classList.add('active');
-
-        renderMenu();
     }
 
     function togglePaymentModal() {
@@ -1023,64 +959,128 @@
 
     function setRating(rating) {
         selectedRating = rating;
-        const stars = document.querySelectorAll('.star');
+        const stars = document.querySelectorAll('.star-rating .star');
         stars.forEach((star, idx) => {
-            if (idx < rating) star.classList.add('selected');
-            else star.classList.remove('selected');
+            if (idx < rating) {
+                star.classList.add('selected');
+            } else {
+                star.classList.remove('selected');
+            }
         });
     }
 
-    async function submitFeedback() {
+    async function submitOrder() {
+        const table = document.getElementById('orderTable').value.trim();
+        const phone = document.getElementById('orderPhone').value.trim();
+        const paymentMethod = document.getElementById('orderPaymentMethod').value;
         const t = translations[currentLang];
+
+        if (!table || Object.keys(cart).length === 0) {
+            alert(t.msgOrderErr);
+            return;
+        }
+
+        const btn = document.getElementById('btn-submit-order');
+        btn.innerText = t.btnSending;
+        btn.disabled = true;
+
+        let orderItemsStr = '';
+        let totalPrice = 0;
+
+        Object.keys(cart).forEach((name, index) => {
+            const entry = cart[name];
+            const lineTotal = parsePrice(entry.data.price) * entry.qty;
+            totalPrice += lineTotal;
+            orderItemsStr += `${index + 1}. ${name} x${entry.qty} - ${lineTotal} ETB\n`;
+        });
+
+        const textMessage = `🛒 *NEW ORDER - Nehase 7 Fresh Milk*\n\n` +
+            `📍 *Table/Room:* ${table}\n` +
+            `📞 *Phone:* ${phone || 'Not provided'}\n` +
+            `💳 *Payment:* ${paymentMethod}\n\n` +
+            `📝 *Items Ordered:*\n${orderItemsStr}\n` +
+            `💰 *Grand Total:* ${totalPrice} ETB`;
+
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: TELEGRAM_CHAT_ID,
+                    text: textMessage,
+                    parse_mode: 'Markdown'
+                })
+            });
+
+            if (res.ok) {
+                alert(t.msgOrderSuccess);
+                cart = {};
+                document.getElementById('orderTable').value = '';
+                document.getElementById('orderPhone').value = '';
+                updateCartUI();
+                toggleCartModal();
+            } else {
+                alert(t.msgError);
+            }
+        } catch (err) {
+            console.error(err);
+            alert(t.msgNetworkErr);
+        } finally {
+            btn.innerText = t.btnPlaceOrder;
+            btn.disabled = false;
+        }
+    }
+
+    async function submitFeedback() {
+        const comment = document.getElementById('feedbackComment').value.trim();
+        const t = translations[currentLang];
+
         if (selectedRating === 0) {
             alert(t.msgSelectRating);
             return;
         }
 
-        const commentInput = document.getElementById('feedbackComment');
-        const comment = commentInput.value.trim();
-        const submitBtn = document.getElementById('btn-submit-fb');
+        const btn = document.getElementById('btn-submit-fb');
+        btn.innerText = t.btnSending;
+        btn.disabled = true;
 
-        const starsText = "⭐".repeat(selectedRating);
-        let message = `<b>NEW FEEDBACK - NEHASE 7 FRESH MILK</b>\n\n`;
-        message += `<b>Language:</b> ${currentLang.toUpperCase()}\n`;
-        message += `<b>Rating:</b> ${starsText} (${selectedRating}/5)\n`;
-        if (comment) message += `<b>Comment:</b> ${comment}\n`;
-
-        const originalBtnText = submitBtn.innerText;
-        submitBtn.innerText = t.btnSending;
-        submitBtn.disabled = true;
+        const starsStr = "★".repeat(selectedRating) + "☆".repeat(5 - selectedRating);
+        const textMessage = `💬 *NEW FEEDBACK - Nehase 7 Fresh Milk*\n\n` +
+            `⭐ *Rating:* ${starsStr} (${selectedRating}/5)\n` +
+            `📝 *Comment:* ${comment || 'No comment provided.'}`;
 
         try {
-            const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+            const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: TELEGRAM_CHAT_ID,
-                    text: message,
-                    parse_mode: "HTML"
+                    text: textMessage,
+                    parse_mode: 'Markdown'
                 })
             });
 
-            const data = await response.json();
-            if (data.ok) {
+            if (res.ok) {
                 alert(t.msgSuccess);
-                toggleFeedbackModal();
-                selectedRating = 0;
                 setRating(0);
-                commentInput.value = '';
+                document.getElementById('feedbackComment').value = '';
+                toggleFeedbackModal();
             } else {
                 alert(t.msgError);
             }
-        } catch (error) {
+        } catch (err) {
+            console.error(err);
             alert(t.msgNetworkErr);
         } finally {
-            submitBtn.innerText = originalBtnText;
-            submitBtn.disabled = false;
+            btn.innerText = t.btnSubmitFb;
+            btn.disabled = false;
         }
     }
 
-    loadMenuFromSheet();
+    // Initialize application on load
+    window.addEventListener('DOMContentLoaded', () => {
+        loadMenuFromSheet();
+    });
 </script>
 </body>
 </html>
