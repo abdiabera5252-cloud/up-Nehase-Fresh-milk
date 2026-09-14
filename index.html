@@ -615,9 +615,9 @@
             btnSending: "Sending...",
             categories: {
                 all: "All Items",
-                carbohydrate: "Carbohydrate",
-                protein: "Protein",
-               protein shakes: "Protein shake"
+                breakfast: "Breakfast",
+                hot_beverages: "Hot Beverages",
+                soft_drinks: "Soft Drinks"
             },
             viewCart: "View Order",
             cartTitle: "Your Order",
@@ -654,9 +654,9 @@
             btnSending: "እየላከ ነው...",
             categories: {
                 all: "ሁሉም",
-                carbohydrate: "ቁርስ",
-                protein: "ትኩስ መጠጦች",
-                protein shake: "ለስላሳ መጠጦች"
+                breakfast: "ቁርስ",
+                hot_beverages: "ትኩስ መጠጦች",
+                soft_drinks: "ለስላሳ መጠጦች"
             },
             viewCart: "ትዕዛዝ ይመልከቱ",
             cartTitle: "የእርስዎ ትዕዛዝ",
@@ -717,7 +717,6 @@
         navigator.clipboard.writeText(text).then(() => {
             showToast(`${label} (${text}) ${translations[currentLang].copiedToast}`);
         }).catch(() => {
-            // Fallback for older browsers
             const textArea = document.createElement('textarea');
             textArea.value = text;
             document.body.appendChild(textArea);
@@ -740,7 +739,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'carbohydrate', 'protein', 'protein shake'];
+        const keys = ['all', 'breakfast', 'hot_beverages', 'soft_drinks'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
@@ -749,27 +748,58 @@
         }).join('');
     }
 
+    // Helper function to safely parse CSV fields containing quotes or commas
+    function parseCSVLine(line) {
+        const result = [];
+        let start = 0;
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') {
+                inQuotes = !inQuotes;
+            } else if (line[i] === ',' && !inQuotes) {
+                let field = line.substring(start, i).trim();
+                if (field.startsWith('"') && field.endsWith('"')) {
+                    field = field.substring(1, field.length - 1).replace(/""/g, '"');
+                }
+                result.push(field);
+                start = i + 1;
+            }
+        }
+        let lastField = line.substring(start).trim();
+        if (lastField.startsWith('"') && lastField.endsWith('"')) {
+            lastField = lastField.substring(1, lastField.length - 1).replace(/""/g, '"');
+        }
+        result.push(lastField);
+        return result;
+    }
+
     async function loadMenuFromSheet() {
         try {
             const response = await fetch(SHEET_URL);
+            if (!response.ok) throw new Error("HTTP error " + response.status);
             const data = await response.text();
             
-            const rows = data.split("\n").slice(1);
-            globalMenuData = rows.map(row => {
-                const columns = row.split(",");
+            // Clean carriage returns and split into rows
+            const rows = data.replace(/\r/g, '').split('\n').filter(r => r.trim() !== '');
+            if (rows.length <= 1) return;
+
+            globalMenuData = rows.slice(1).map(row => {
+                const columns = parseCSVLine(row);
                 return {
-                    name: columns[0]?.trim(),
-                    category: columns[1]?.trim().toLowerCase().replace(/\s+/g, '_'),
-                    price: columns[2]?.trim(),
-                    img: columns[3]?.trim(),
-                    desc: columns[4]?.trim(),
-                    name_am: columns[5]?.trim() || columns[0]?.trim(),
-                    desc_am: columns[6]?.trim() || columns[4]?.trim()
+                    name: columns[0] ? columns[0].trim() : '',
+                    category: columns[1] ? columns[1].trim().toLowerCase().replace(/\s+/g, '_') : 'all',
+                    price: columns[2] ? columns[2].trim() : '0 ETB',
+                    img: columns[3] ? columns[3].trim() : 'https://via.placeholder.com/150',
+                    desc: columns[4] ? columns[4].trim() : '',
+                    name_am: columns[5] ? columns[5].trim() : (columns[0] ? columns[0].trim() : ''),
+                    desc_am: columns[6] ? columns[6].trim() : (columns[4] ? columns[4].trim() : '')
                 };
-            }).filter(item => item.name);
+            }).filter(item => item.name.length > 0);
 
             setLanguage('en');
         } catch (error) {
+            console.error("Sheet Load Error:", error);
             document.getElementById('menu-list').innerHTML = `<p style='color:red; text-align:center;'>${translations[currentLang].loadErr}</p>`;
         }
     }
@@ -788,6 +818,11 @@
             ? globalMenuData 
             : globalMenuData.filter(item => item.category === currentCategory);
 
+        if (filteredItems.length === 0) {
+            menuContainer.innerHTML = `<p style="text-align:center; color:var(--text-muted); padding:20px;">No items found.</p>`;
+            return;
+        }
+
         filteredItems.forEach((item) => {
             const name = (currentLang === 'am' && item.name_am) ? item.name_am : item.name;
             const desc = (currentLang === 'am' && item.desc_am) ? item.desc_am : item.desc;
@@ -795,18 +830,18 @@
 
             const actionMarkup = itemQty > 0 ? `
                 <div class="cart-btn-ctrl">
-                    <button class="qty-btn" onclick="updateCartQuantity('${item.name}', -1)">-</button>
+                    <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', -1)">-</button>
                     <span style="font-weight:600; font-size:0.85rem;">${itemQty}</span>
-                    <button class="qty-btn" onclick="updateCartQuantity('${item.name}', 1)">+</button>
+                    <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+</button>
                 </div>
             ` : `
-                <button class="add-cart-btn" onclick="updateCartQuantity('${item.name}', 1)">+ Add to Order</button>
+                <button class="add-cart-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+ Add to Order</button>
             `;
 
             const itemHTML = `
                 <div class="menu-item">
                     <div class="item-image-container">
-                        <img src="${item.img}" alt="${name}" class="item-image" loading="lazy">
+                        <img src="${item.img}" alt="${name}" class="item-image" loading="lazy" onerror="this.src='https://via.placeholder.com/150';">
                     </div>
                     <div class="item-details">
                         <div class="item-header">
@@ -870,9 +905,9 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <div class="cart-btn-ctrl">
-                            <button class="qty-btn" onclick="updateCartQuantity('${item.name}', -1)">-</button>
+                            <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', -1)">-</button>
                             <span style="font-size:0.85rem;">${qty}</span>
-                            <button class="qty-btn" onclick="updateCartQuantity('${item.name}', 1)">+</button>
+                            <button class="qty-btn" onclick="updateCartQuantity('${item.name.replace(/'/g, "\\'")}', 1)">+</button>
                         </div>
                         <span style="font-weight:600; min-width:60px; text-align:right; font-size:0.9rem;">${subtotal} ETB</span>
                     </div>
