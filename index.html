@@ -616,8 +616,8 @@
             categories: {
                 all: "All Items",
                 carbohydrate: "Carbohydrate",
-                hot_beverages: "Hot Beverages",
-                soft_drinks: "Soft Drinks"
+                protein: "Protein",
+                protein_shake: "protein_shake"
             },
             viewCart: "View Order",
             cartTitle: "Your Order",
@@ -655,8 +655,8 @@
             categories: {
                 all: "ሁሉም",
                 carbohydrate: "ቁርስ",
-                hot_beverages: "ትኩስ መጠጦች",
-                soft_drinks: "ለስላሳ መጠጦች"
+                protein: "ትኩስ መጠጦች",
+                protein_shake: "ለስላሳ መጠጦች"
             },
             viewCart: "ትዕዛዝ ይመልከቱ",
             cartTitle: "የእርስዎ ትዕዛዝ",
@@ -739,7 +739,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'carbohydrate', 'hot_beverages', 'soft_drinks'];
+        const keys = ['all', 'carbohydrate', 'protein', 'protein_shake'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
