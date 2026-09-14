@@ -617,7 +617,9 @@
                 all: "All Items",
                 carbohydrate: "Carbohydrate",
                 protein: "Protein",
-                protein_shake: "protein_shake"
+                protein_shake: "Protein_shake"
+                calcium: "Calcium",
+                vitamin: "Vitamin",
             },
             viewCart: "View Order",
             cartTitle: "Your Order",
@@ -656,7 +658,10 @@
                 all: "ሁሉም",
                 carbohydrate: "ቁርስ",
                 protein: "ትኩስ መጠጦች",
-                protein_shake: "ለስላሳ መጠጦች"
+                protein_shake: "ለስላሳ መጠጦች",
+                calcium      : "",
+                vitamin      :""
+                      
             },
             viewCart: "ትዕዛዝ ይመልከቱ",
             cartTitle: "የእርስዎ ትዕዛዝ",
@@ -739,7 +744,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
-        const keys = ['all', 'carbohydrate', 'protein', 'protein_shake'];
+        const keys = ['all', 'carbohydrate', 'protein', 'protein_shake', 'calcium', 'vitamin'];
         
         catContainer.innerHTML = keys.map(key => {
             const label = catMap[key] || key;
