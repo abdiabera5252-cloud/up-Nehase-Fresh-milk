@@ -659,8 +659,8 @@
                 carbohydrate: "ቁርስ",
                 protein: "ትኩስ መጠጦች",
                 protein_shake: "ለስላሳ መጠጦች",
-                calcium      : "",
-                vitamin      :""
+                calcium      : "ካልሲየም",
+                vitamin      : "ቫይታሚን"
                       
             },
             viewCart: "ትዕዛዝ ይመልከቱ",
@@ -744,6 +744,7 @@
     function renderCategories() {
         const catContainer = document.getElementById('categories-wrapper');
         const catMap = translations[currentLang].categories;
+        const categoryKeys = Object.keys(translations[currentLang].categories);
         const keys = ['all', 'carbohydrate', 'protein', 'protein_shake', 'calcium', 'vitamin'];
         
         catContainer.innerHTML = keys.map(key => {
